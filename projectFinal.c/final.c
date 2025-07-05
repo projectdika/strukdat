@@ -360,12 +360,30 @@ void sortTugas() {
             Tugas a = daftarTugas[j];
             Tugas b = daftarTugas[j + 1];
 
-            int tglA = a.tahun * 1000000 + a.bulan * 10000 + a.hari * 100 + a.jam;
-            int tglB = b.tahun * 1000000 + b.bulan * 10000 + b.hari * 100 + b.jam;
+            struct tm ta = {0}, tb = {0};
+            ta.tm_year = a.tahun - 1900;
+            ta.tm_mon = a.bulan - 1;
+            ta.tm_mday = a.hari;
+            ta.tm_hour = a.jam;
+            ta.tm_min = a.menit;
 
-            if (tglA > tglB ||
-                (tglA == tglB && a.menit > b.menit) ||
-                (tglA == tglB && a.menit == b.menit && a.kesulitan > b.kesulitan)) {
+            tb.tm_year = b.tahun - 1900;
+            tb.tm_mon = b.bulan - 1;
+            tb.tm_mday = b.hari;
+            tb.tm_hour = b.jam;
+            tb.tm_min = b.menit;
+
+            time_t timeA = mktime(&ta);
+            time_t timeB = mktime(&tb);
+
+            // Jika deadline A setelah B, tukar
+            if (difftime(timeA, timeB) > 0) {
+                Tugas temp = daftarTugas[j];
+                daftarTugas[j] = daftarTugas[j + 1];
+                daftarTugas[j + 1] = temp;
+            }
+            // Jika deadline sama, tapi kesulitan A lebih kecil dari B, tukar (karena kita ingin kesulitan tinggi muncul dulu)
+            else if (difftime(timeA, timeB) == 0 && a.kesulitan < b.kesulitan) {
                 Tugas temp = daftarTugas[j];
                 daftarTugas[j] = daftarTugas[j + 1];
                 daftarTugas[j + 1] = temp;
@@ -373,6 +391,7 @@ void sortTugas() {
         }
     }
 }
+
 
 void tampilTugas() {
     if (jumlahTugas == 0) {
@@ -411,7 +430,9 @@ void tampilTugas() {
                 sprintf(statusWaktu, MERAH "- DEADLINE HARI INI!!!" RESET);
             }
         } else if (selisihHari <= 2) {
-            sprintf(statusWaktu, KUNING "- lagi %d hari - cepet selesaikan!" RESET, selisihHari);
+            int jamSisa = (selisihMenit / 60) % 24;
+            int menitSisa = selisihMenit % 60;
+            sprintf(statusWaktu, KUNING "- lagi %d hari - %d jam %d menit lagi - cepet selesaikan!" RESET, selisihHari, jamSisa, menitSisa);
         } else {
             sprintf(statusWaktu, "- lagi %d hari", selisihHari);
         }
@@ -484,7 +505,17 @@ void tampilTreeDenganDeadline(TreeNode* root, int level) {
     } else if (selisihHari == 0) {
         sprintf(statusWaktu, MERAH "- DEADLINE HARI INI!!!" RESET);
     } else if (selisihHari <= 2) {
-        sprintf(statusWaktu, KUNING "- lagi %d hari - cepet selesaikan!" RESET, selisihHari);
+            int totalMenit = hitungSelisihMenit(
+                root->data.hari,
+                root->data.bulan,
+                root->data.tahun,
+                root->data.jam,
+                root->data.menit
+            );
+            int jamSisa = (totalMenit / 60) % 24;
+            int menitSisa = totalMenit % 60;
+
+            sprintf(statusWaktu, KUNING "- lagi %d hari - %d jam %d menit lagi - cepet selesaikan!" RESET, selisihHari, jamSisa, menitSisa);
     } else {
         sprintf(statusWaktu, "- lagi %d hari", selisihHari);
     }
